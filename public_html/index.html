@@ -1,0 +1,55 @@
+<!DOCTYPE html><html style="cursor: default;">
+
+<head manifest=NoCache.appcache>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="HandheldFriendly"   content="true" />
+  <title>GPIO Control</title>
+  <link   type="text/css"         href="GPIOServer.css" rel="stylesheet">
+  <script type="text/javascript"  src="GPIOServer.js"></script>
+  <script type="text/javascript">
+    function PageInit() {}
+    </script>
+    </head>
+
+<body>
+
+<div id="ConnectingPage" style="display: block;" class="PageDiv">
+    <h1>Connecting...</h1>
+    </div>
+
+<div id="ControlPage" class="PageDiv">
+    <table class="TOCColumns" summary="System name">
+        <tr><td style="width: 10%">&nbsp;</td><td><h1 class="NoBotMargin">GPIO Control for: <span class="SysName"></span></h1></td></tr>
+        </table>
+
+    <table class="GPIOTable" summary="GPIO Control">
+        <tr><td style="width: 10%"></td><td style="width: 60%">
+        <table id="GPIOValues">
+            </table>
+        </td></tr></table>
+
+    <table id="ConfigButton" class="NavTable">
+        <tr><td>&nbsp;</td></tr>
+        <tr><td><img class="NavButton" src="images/Config.png" title="Config" onclick=GotoPage("ConfigPage") /></td><td><h2>Config</h2></td></tr>
+        </table>
+    </div>
+
+<div id="ConfigPage" class="PageDiv">
+    <table class="TOCColumns" summary="System name">
+        <tr><td style="width: 10%">&nbsp;</td><td><h1>GPIO names for: <span class="SysName"></span></h1></td></tr>
+        <tr><td style="width: 10%"></td><td style="width: 80%">
+        Choose a name and description for your devices:
+        </table>
+
+    <table class="GPIOTable" summary="GPIO Names">
+        <tr><td style="width: 10%"></td><td style="width: 80%">
+        <table id="GPIONames">
+            </table>
+        </td></tr></table>
+
+    <table class="NavTable">
+        <tr><td>&nbsp;</td></tr>
+        <tr><td><img class="NavButton" src="images/Back.png" title="Back" onclick="ChangeGPIONames()" /></td><td><h2>Back</h2></td></tr>
+        </table>
+    </div>
+</html>
