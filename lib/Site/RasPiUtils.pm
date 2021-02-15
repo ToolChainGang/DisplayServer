@@ -23,6 +23,7 @@
 ##      Reboot()                # Reboot the system
 ##      IAmRoot()               # Return TRUE if user is running as root
 ##      NumUsers()              # Return number of logged-in users of the system
+##      NumSSHUsers()           # Return number of SSH logged-in users of the system
 ##      ListInterfaces()        # Return a list of interfaces on the system
 ##      DiskExpanded()          # Return TRUE if disk is expanded
 ##
@@ -70,6 +71,7 @@ our $VERSION = '2020.08_16';
 our @EXPORT  = qw(&Reboot
                   &IAmRoot
                   &NumUsers
+                  &NumSSHUsers
                   &ListInterfaces
                   &DiskExpanded
                   &GetHostname
@@ -131,7 +133,11 @@ sub NumUsers { return scalar split /\s/, `users`; }
 ##
 ## Outputs:     Numer of SSH users
 ##
-sub NumSSHUsers { return scalar (`ss | grep -i ssh`); }
+sub NumSSHUsers { 
+    my @Lines = `ss | grep -i ssh`;
+
+    return scalar @Lines;
+    }
 
 
 ########################################################################################################################

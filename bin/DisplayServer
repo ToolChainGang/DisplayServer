@@ -8,71 +8,34 @@
 ##
 ##  FILE
 ##
-##      GPIOServer
+##      DisplayServer
 ##
 ##  DESCRIPTION
 ##
-##      RasPi configuration server
+##      RasPi display server
 ##
-##      Accept commands from a web socket and perform that function.
+##      Monitor a directory, and display the files that appear there
 ##
 ##  USAGE
 ##
-##      GPIOServer [-v]
+##      DisplayServer [-v]
 ##
 ##      where:      -v      Verbose: print out things as they happen
 ##
-##      Available commands:
-##
-##      ListCommands        => Array of available commands (this list)
-##      GetGPIOInfo         => Return GPIOInfo struct of info
-##      SetGPIOInfo         => Accept new GPIOInfo struct and change names
-##      ToggleGPIO  GPIO#   => Change the state of one GPIO to opposite state
-##      SetGPIO     GPIO#   => Set    the state of one GPIO to specific value
-##      CycleGPIO   GPIO#   => Turn one GPIO off, wait, then turn ON again
-##      ReadGPIO            => Read all GPIO values (synonym for GetGPIOInfo)
-##
-##      SetUName    GPIO# Name        => Set UName of GPIO
-##      SetUDesc    GPIO# Desc        => Set UDesc of GPIO
-##
-##      Examples:
-##
-##          ToggleGPIO 7            Change state of GPIO 7: if Off, becomes On. If On, becomes Off
-##
-##          CycleGPIO  10           Will turn 10 Off, wait a while, then on again
-##
-##          SetUName   7 "Keurig"   Change UName of GPIO7 to "Keurig"
-##
 ########################################################################################################################
 ########################################################################################################################
 ##
-##      $GPIOInfo   contains information for user consumption: UName, UDesc, Value, and so on.
+##      $DisplayFiles   Contains information about the displayed files, listed by PID
 ##
-##      $GPIOInfo->{GPIOInfo}->[]
-##          {UName} -> "Keurig",                         # User assigned name
-##          {UDesc} -> "Coffee maker in the kitchen"     # User assigned comment
-##          {HName} -> "Relay 1"                         # Hardware name
-##          {Mode}  -> [ 'Input', 'Output' ],
-##          {Value} -> [    'On',    'Off' ],            # Current value
-##          {ID}                                         # (unused by web page)
+##      $DisplayFiles->{$PID}
+##          {PID}     -> PID of process displaying file (== hash key)
+##          {Command} -> Command used for displaying file
+##          {DTM}     -> Date-time-modified of file
 ##
-##      $GPIOConfig contains full information about the GPIO, including the opened device, mode, 
-##                    logic, and so on.
+##      $DisplayConfig  Contains information about how to display files, listed by file extension
 ##
-##      $GPIOConfig->{GPIO}             # GPIO number, ie "5"
-##          {UName}  -> "Keurig",                         # User assigned name
-##          {UDesc}  -> "Coffee maker in the kitchen"     # User assigned comment
-##          {HName}  -> "Relay 1"                         # Hardware name
-##          { Mode}  -> [  "Input", "Output" ],
-##          {Logic}  -> [ "Normal", "Invert" ],
-##          { Boot}  -> [    "Off",     "On" ],
-##          { Pull}  -> [  "None", "Low", "High" ],
-##          {Device} -> (opened GPIO device)
-##
-##      "Value" and "ID" only exist in the Info struct.
-##
-##      The logic will convert keywords to camel case; thus, it is sufficient to
-##        say things like "if $GPIO->{Logic} eq "Invert" and expect an exact match.
+##      $DisplayConfig->{$ext}                  # File extension; ie - ".jpg"
+##          {Command} -> "some-command %U"      # Command used to display that file
 ##
 ########################################################################################################################
 ########################################################################################################################
@@ -103,16 +66,13 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = 'GPIOServer2020-10-20';
-
-use RPi::Pin;
-use RPi::Const qw(:all);
+our $VERSION = 'DisplayServer2020-12-20';
 
 use JSON;
 use Data::Dumper;
 use File::Slurp qw(read_file);
 
-use lib "$ENV{HOME}/GPIOServer/lib";
+use lib "$ENV{HOME}/DisplayServer/lib";
 
 use Site::Process;
 use Site::WSServer;
@@ -128,12 +88,6 @@ use Site::RasPiUtils;
 ########################################################################################################################
 
 our $SERVER_PORT = 2021;
-
-our $CycleDefaultMS = 6000;     # 6 seconds wait when power cycling
-
-our $SysName;
-our $GPIOConfig;        # Full description of GPIO block
-our $GPIOInfo;          # Info given to web page
 
 our $NoError = "No error.";
 
@@ -184,6 +138,18 @@ my $Verbose = 0;
 
 $Verbose = 1
     if defined $ARGV[0] and $ARGV[0] eq "-v";
+
+print "SSH Users: " . (NumSSHUsers()) . "\n";
+exit(0);
+
+
+use RPi::Pin;
+use RPi::Const qw(:all);
+
+our $SysName;
+our $GPIOInfo;
+our $GPIOConfig;
+our $CycleDefaultMS  = 600;
 
 GetGPIOConfig();
 $SysName    = GetHostname();

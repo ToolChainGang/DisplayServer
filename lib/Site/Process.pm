@@ -144,7 +144,7 @@ sub new {
     $self->{TimedCommand} = "";
     $self->{Timeout     } = 0;
 
-    $self->{BackgroundCommands} = {}
+    $self->{BackgroundCommands} = {};
     $self->{NoRebootUsers     } = AnyUsers;
 
     $SIG{ALRM} = sub { $self->Timeout  (); };
@@ -176,12 +176,12 @@ sub TimeoutCommand {
     eval {
         alarm $self->{SysTimeout};
 
-        $Rtnval = `$Command`;
+        $Rtnval = `$self->{TimedCommand}`;
 
         alarm 0;
         };
 
-    $self->ErrorReboot("Error executing $Command ($!)")
+    $self->ErrorReboot("Error executing $self->{TimedCommand} ($!)")
         if $@;
         
     return $Rtnval;
@@ -254,7 +254,7 @@ sub EndBackgroundCommand {
     #
     # Remove the $BackgroundCommands{$PID} first, so we know tha tthe child exit is expected.
     #
-    delete $BackgroundCommands{$PID};
+    delete $self->{BackgroundCommands}{$PID};
 
     kill "KILL",$PID;
     }
@@ -296,7 +296,7 @@ sub ChildExit {
     return
         if $PID ==  0;      # == Children, none terminated
 
-    my $Command = $self->{BackgroundCommands}{$PID}
+    my $Command = $self->{BackgroundCommands}{$PID};
 
     return                  # Ended by func call, exit expected.
         unless defined $Command;
@@ -332,7 +332,7 @@ sub NoRebootUsers {
                $Users == SSHUsers ||
                $Users == NoUsers;
 
-    $self->{NoRebootUsers} = $User;
+    $self->{NoRebootUsers} = $Users;
     }
 
 
