@@ -41,6 +41,8 @@
 ##      MaxWin($WID)                        Make window full screen
 ##      RaiseWin($WID)                      Bring the window forward
 ##
+##      ChildPIDs($PID)                     Return array of children PIDs of PID
+##
 ########################################################################################################################
 ########################################################################################################################
 ##
@@ -154,8 +156,6 @@ sub GetDisplaySize {
     #
     my ($W, $H) = $SizeText =~ m/\s*dimensions:\s*(\d*)x(\d*) pixels/;
 
-print "Display: ${W}x${H}\n";
-
     return ($W,$H);
     }
 
@@ -175,9 +175,10 @@ sub WaitForWindow {
     my $WID = 0;
 
     until( $WID ) {
-        $WID = `xdotool search -sync -all -onlyvisible --pid $PID`;
+        $WID = `xdotool search -sync -all -onlyvisible --pid $PID 2>/dev/null`;
         }
 
+    chomp $WID;
     return $WID
     }
 
@@ -256,6 +257,7 @@ sub RaiseWin {
 
     `xdotool windowraise $WindowID`;
     }
+
 
 
 #

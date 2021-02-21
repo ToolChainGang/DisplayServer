@@ -2,3 +2,4 @@ export DISPLAY=:0.0
 xdotool
 
 wmctrl
+gnuplot

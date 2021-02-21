@@ -74,6 +74,8 @@ use lib "$ENV{HOME}/DisplayServer/lib";
 
 use Site::Process;
 use Site::WinInfo;
+use Site::PIDInfo;
+#use Site::DisplayConfig;
 
 ########################################################################################################################
 ########################################################################################################################
@@ -84,7 +86,6 @@ use Site::WinInfo;
 ########################################################################################################################
 
 my $DisplayDir = "/srv/Display";
-my $OpenCmd    = "xdg-open";
 
 my $DisplayList = {};
 my $Processes    = Site::Process->new();
@@ -137,12 +138,15 @@ my ($W, $H) = GetDisplaySize();
 DisplayFile($_)
     foreach @DisplayOrder;
 
-sleep(5);
-my $WinInfo = GetWinInfo();
+#sleep(5);
+#my $WinInfo = GetWinInfo();
 
 # F11Win($DisplayList->{$_}{FileInfo})
 #     foreach @DisplayOrder;
     
+use Data::Dumper;
+print Data::Dumper->Dump([$DisplayList],[qw(DisplayList)]);
+
 exit(0);
 
 while(1) {};
@@ -162,9 +166,11 @@ exit(0);
 sub DisplayFile {
     my $File = shift;
 
-    $DisplayList->{$File}->{PID} = $Processes->BackgroundCommand("$OpenCmd $DisplayList->{$_}{FileInfo}{Path}");
-#    $DisplayList->{$File}->{WID} = WaitForWindow($DisplayList->{$File}->{PID});
-#    MaxWin($DisplayList->{$File}->{WID});
+    my $OpenCmd = "xdg-open";
+    $DisplayList->{$File}->{PPID} = $Processes->BackgroundCommand("$OpenCmd $DisplayList->{$_}{FileInfo}{Path}");
+    $DisplayList->{$File}->{CPID} = WaitForChild($DisplayList->{$File}->{PPID});
+    $DisplayList->{$File}->{CWID} = WaitForWindow($DisplayList->{$File}->{CPID});
+    MaxWin($DisplayList->{$File}->{CWID});
 
     return;
     }
@@ -317,102 +323,4 @@ sub ParseFilename {
              Scale    => $Scale,
              MTime    => $mtime,
              };
-    }
-
-
-########################################################################################################################
-########################################################################################################################
-#
-# GetConfig - Set up a local config struct with all the information from the config file
-#
-# Inputs:      None.
-#
-# Outputs:     None. Global $DisplayServerConfig is filled
-#
-sub GetConfig {
-
-    ####################################################################################################################
-    #
-    # GPIO information, from config file
-    #
-    return { Valid => 0 }
-        unless -r $GPIOConfigFile;
-
-    my $ConfigFile = Site::ParseData->new(Filename => $GPIOConfigFile, Matches  => $GPIOMatches);
-    $GPIOConfig = $ConfigFile->ParseFile();
-
-    $GPIOConfig->{$RenameKey} = MatchArgs($GPIOConfig->{$RenameKey}, [ "Yes", "No" ],"Global",$RenameKey);
-    $GPIOConfig->{Valid} = $ConfigFile->{Parsed};
-
-    foreach my $GPIOID (keys %{$GPIOConfig}) {
-
-        next
-            if $GPIOID eq "Valid" or $GPIOID eq $RenameKey;
-
-        ################################################################################################################
-        #
-        # Do some conversions and simple error checking on the GPIO input file
-        #
-        # GPIO    3
-        #     Mode=Output
-        #     Logic=Normal
-        #     Pull=High
-        #     Boot=Off
-        #     HName="Relay U3"
-        #     UName="Relay U3"
-        #     UDesc=""
-        #
-        exit Message("**** GPIOServer: GPIO ID ($GPIOID) is not valid number")
-            unless $GPIOID =~ /^\d+$/;
-
-        exit Message("**** GPIOServer: GPIO ID ($GPIOID) is out of range")
-            unless $GPIOID >= 0 and $GPIOID <= 31;
-
-        my $GPIO = $GPIOConfig->{$GPIOID};
-
-        $GPIO->{ Mode} = MatchArgs($GPIO->{ Mode},[  "Input", "Output" ],$GPIOID, "Mode");
-        $GPIO->{Logic} = MatchArgs($GPIO->{Logic},[ "Normal", "Invert" ],$GPIOID,"Logic");
-        $GPIO->{ Boot} = MatchArgs($GPIO->{ Boot},[    "Off",     "On" ],$GPIOID, "Boot");
-
-        #
-        # Pull takes "High", "Low", or "None". Devault (1st arg) is "None".
-        #
-        $GPIO->{Pull} = MatchArgs($GPIO->{Pull},[  "None", "Low", "High" ],$GPIOID, "Pull")
-            if $GPIO->{Mode} eq "Input";
-
-        $GPIO->{HName} = "GPIO$GPIOID"
-            unless defined $GPIO->{HName} and length $GPIO->{HName};
-
-        $GPIO->{UName} = "GPIO$GPIOID"
-            unless defined $GPIO->{UName} and length $GPIO->{UName};
-
-        $GPIO->{UDesc} = "---"
-            unless defined $GPIO->{UDesc} and length $GPIO->{UDesc};
-
-        ################################################################################################################
-        #
-        # Connect to the GPIO in question and get the current value
-        #
-        my $Device = RPi::Pin->new($GPIOID);
-        $GPIO->{Device} = $Device;
-
-        if( $GPIO->{Mode} eq "Input" ) { 
-            $Device->mode(INPUT); 
-
-            if(    $GPIO->{Pull} eq "High" ) { $Device->pull(PUD_UP)  ; }
-            elsif( $GPIO->{Pull} eq "Low"  ) { $Device->pull(PUD_DOWN); }
-            else                             { $Device->pull(PUD_OFF) ; }
-
-            $Device->set_interrupt(EDGE_BOTH,'main::PinChange');
-            }
-        else                           { 
-            #
-            # Avoid pathological spike that can happen if we set the mode
-            #   before setting the output value.
-            #
-            SetGPIO($GPIOID,$GPIO->{Boot});
-            $Device->mode(OUTPUT); 
-            SetGPIO($GPIOID,$GPIO->{Boot});
-            }
-        }
     }

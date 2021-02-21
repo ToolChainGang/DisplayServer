@@ -8,7 +8,7 @@
 ##
 ##  FILE
 ##
-##      DisplayConfig.pm
+##      Site::DisplayConfig.pm
 ##
 ##  DESCRIPTION
 ##
